@@ -1,126 +1,114 @@
-import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { neon } from '@neondatabase/serverless';
+import { NextResponse } from 'next/server';
 
-// ✅✅✅ ADD THESE 2 LINES HERE ✅✅✅
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Path to JSON file in project root
-const filePath = path.join(process.cwd(), "news-data.json");
-
-// Utility: read file + auto-clean invalid entries
-function readNewsFile() {
-  try {
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, JSON.stringify([])); // create file if missing
-    }
-    const data = fs.readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(data || "[]");
-
-    // ✅ Clean out empty/bad entries
-    return parsed.filter(
-      (n) => n && typeof n === "object" && n.title?.trim() && n.slug?.trim()
-    );
-  } catch (err) {
-    console.error("Read error:", err);
-    return [];
-  }
-}
-
-// Utility: write file
-function writeNewsFile(data) {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error("Write error:", err);
-  }
-}
-
 // GET all news
 export async function GET() {
-  const newsData = readNewsFile();
-  return NextResponse.json(newsData, { status: 200 });
+  try {
+    const sql = neon(process.env.DATABASE_URL);
+    const news = await sql`SELECT * FROM news ORDER BY created_at DESC`;
+    return NextResponse.json(news, { status: 200 });
+  } catch (error) {
+    console.error('GET error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 // POST add news
 export async function POST(req) {
   try {
+    const sql = neon(process.env.DATABASE_URL);
     const body = await req.json();
+    const { title, slug, summary, image, tag, time, readTime, content } = body;
 
-    if (!body.title?.trim() || !body.slug?.trim()) {
+    if (!title?.trim() || !slug?.trim()) {
       return NextResponse.json(
-        { error: "Title and slug are required" },
+        { error: 'Title and slug are required' },
         { status: 400 }
       );
     }
 
-    let newsData = readNewsFile();
-    newsData.push(body);
-    writeNewsFile(newsData);
+    const result = await sql`
+      INSERT INTO news (title, slug, summary, image, tag, time, read_time, content)
+      VALUES (${title}, ${slug}, ${summary || ''}, ${image || ''}, ${tag || ''}, ${time || ''}, ${readTime || ''}, ${content || ''})
+      RETURNING *
+    `;
 
     return NextResponse.json(
-      { message: "News added", data: body },
+      { message: 'News added', data: result[0] },
       { status: 201 }
     );
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error) {
+    console.error('POST error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 // PUT update news by slug
 export async function PUT(req) {
   try {
+    const sql = neon(process.env.DATABASE_URL);
     const body = await req.json();
-    const { slug } = body;
+    const { slug, title, summary, image, tag, time, readTime, content } = body;
 
     if (!slug?.trim()) {
-      return NextResponse.json({ error: "Slug required" }, { status: 400 });
+      return NextResponse.json({ error: 'Slug required' }, { status: 400 });
     }
 
-    let newsData = readNewsFile();
-    const index = newsData.findIndex((n) => n.slug === slug);
+    const result = await sql`
+      UPDATE news 
+      SET title = ${title}, 
+          summary = ${summary || ''}, 
+          image = ${image || ''}, 
+          tag = ${tag || ''}, 
+          time = ${time || ''}, 
+          read_time = ${readTime || ''}, 
+          content = ${content || ''}
+      WHERE slug = ${slug}
+      RETURNING *
+    `;
 
-    if (index === -1) {
-      return NextResponse.json({ error: "News not found" }, { status: 404 });
+    if (result.length === 0) {
+      return NextResponse.json({ error: 'News not found' }, { status: 404 });
     }
-
-    newsData[index] = body; // overwrite
-    writeNewsFile(newsData);
 
     return NextResponse.json(
-      { message: "Updated successfully", data: newsData[index] },
+      { message: 'Updated successfully', data: result[0] },
       { status: 200 }
     );
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error) {
+    console.error('PUT error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// DELETE news by slug (also removes empties)
+// DELETE news by slug
 export async function DELETE(req) {
   try {
+    const sql = neon(process.env.DATABASE_URL);
     const { slug } = await req.json();
 
-    let newsData = readNewsFile();
-
-    if (slug?.trim()) {
-      // Normal delete by slug
-      newsData = newsData.filter((n) => n.slug !== slug);
-    } else {
-      // ✅ If no slug, remove ALL invalid/empty ones
-      newsData = newsData.filter(
-        (n) => n.title?.trim() && n.slug?.trim()
-      );
+    if (!slug?.trim()) {
+      return NextResponse.json({ error: 'Slug required' }, { status: 400 });
     }
 
-    writeNewsFile(newsData);
+    const result = await sql`
+      DELETE FROM news WHERE slug = ${slug}
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      return NextResponse.json({ error: 'News not found' }, { status: 404 });
+    }
 
     return NextResponse.json(
-      { message: "Deleted successfully", data: newsData },
+      { message: 'Deleted successfully', data: result[0] },
       { status: 200 }
     );
-  } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (error) {
+    console.error('DELETE error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
