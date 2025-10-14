@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+// ✅✅✅ ADD THESE 2 LINES HERE ✅✅✅
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Path to JSON file in project root
 const filePath = path.join(process.cwd(), "news-data.json");
 
