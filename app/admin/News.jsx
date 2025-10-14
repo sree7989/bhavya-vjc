@@ -24,12 +24,11 @@ export default function AdminNews() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // ✅ Load all news - FORCED FRESH DATA EVERY TIME
+  // ✅ Load all news
   const loadNews = async () => {
     try {
       setIsLoading(true);
       
-      // Aggressive cache-busting
       const timestamp = new Date().getTime();
       const random = Math.random().toString(36).substring(7);
       
@@ -109,7 +108,7 @@ export default function AdminNews() {
     showNotification("🗑 Image removed successfully!", "success");
   };
 
-  // ✅ Add news - SIMPLE VERSION
+  // ✅ Add news with HARD RELOAD
   const handleAdd = async () => {
     const newNews = { ...form, slug: slugify(form.title) };
 
@@ -136,15 +135,12 @@ export default function AdminNews() {
 
       await response.json();
       
-      resetForm();
+      showNotification("✅ News added successfully! Refreshing...", "success");
       
-      // Wait longer for Vercel database to commit
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Reload fresh data from server
-      await loadNews();
-      
-      showNotification("✅ News added successfully!", "success");
+      // Wait 1 second then hard reload page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
     } catch (err) {
       console.error("Add failed:", err);
@@ -153,7 +149,7 @@ export default function AdminNews() {
     }
   };
 
-  // ✅ Update news - SIMPLE VERSION
+  // ✅ Update news with HARD RELOAD
   const handleUpdate = async () => {
     if (!isValid(form)) {
       showNotification("⚠️ Title and Content are required.", "error");
@@ -183,15 +179,12 @@ export default function AdminNews() {
 
       await response.json();
       
-      resetForm();
+      showNotification("✅ News updated successfully! Refreshing...", "success");
       
-      // Wait longer for Vercel database to commit
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Reload fresh data from server
-      await loadNews();
-      
-      showNotification("✅ News updated successfully!", "success");
+      // Wait 1 second then hard reload page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
     } catch (err) {
       console.error("Update failed:", err);
@@ -200,7 +193,7 @@ export default function AdminNews() {
     }
   };
 
-  // ✅ Delete news - SIMPLE VERSION - NO CONFIRMATION
+  // ✅ Delete news with HARD RELOAD - NO CONFIRMATION
   const handleDelete = async (slug) => {
     setIsLoading(true);
     
@@ -222,13 +215,12 @@ export default function AdminNews() {
 
       await response.json();
       
-      // Wait longer for Vercel database to commit
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      showNotification("🗑 News deleted successfully! Refreshing...", "success");
       
-      // Reload fresh data from server
-      await loadNews();
-      
-      showNotification("🗑 News deleted successfully!", "success");
+      // Wait 1 second then hard reload page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
     } catch (err) {
       console.error("Delete failed:", err);
