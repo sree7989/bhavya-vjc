@@ -16,6 +16,7 @@ export default function AdminNews() {
   const [editSlug, setEditSlug] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // ✅ Show notification
   const showNotification = (message, type = "success") => {
@@ -23,14 +24,17 @@ export default function AdminNews() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // ✅ Load all news with cache-busting
+  // ✅ Load all news with aggressive cache-busting
   const loadNews = async () => {
     try {
-      const res = await fetch("/api/news", {
+      // Multiple cache-busting strategies combined
+      const timestamp = new Date().getTime();
+      const random = Math.random();
+      const res = await fetch(`/api/news?_=${timestamp}&r=${random}`, {
         method: "GET",
-        cache: "no-store", // Disable caching
+        cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
           "Pragma": "no-cache",
           "Expires": "0",
         },
@@ -58,7 +62,7 @@ export default function AdminNews() {
 
   useEffect(() => {
     loadNews();
-  }, []);
+  }, [refreshKey]);
 
   // ✅ Validation helper
   const isValid = (obj) => {
@@ -101,6 +105,11 @@ export default function AdminNews() {
     showNotification("🗑 Image removed successfully!", "success");
   };
 
+  // ✅ Force refresh data
+  const forceRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   // ✅ Add news
   const handleAdd = async () => {
     const newNews = { ...form, slug: slugify(form.title) };
@@ -115,7 +124,7 @@ export default function AdminNews() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
         body: JSON.stringify(newNews),
       });
@@ -124,9 +133,17 @@ export default function AdminNews() {
         throw new Error("Failed to add news");
       }
 
+      // Wait for response to complete
+      await response.json();
+      
       resetForm();
-      await loadNews(); // Wait for reload to complete
-      showNotification("✅ News added successfully!", "success");
+      
+      // Multiple refresh strategies
+      setTimeout(() => {
+        forceRefresh();
+        showNotification("✅ News added successfully!", "success");
+      }, 300);
+      
     } catch (err) {
       console.error("Add failed:", err);
       showNotification("❌ Failed to add news.", "error");
@@ -150,7 +167,7 @@ export default function AdminNews() {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
         body: JSON.stringify(updatedNews),
       });
@@ -159,29 +176,31 @@ export default function AdminNews() {
         throw new Error("Failed to update news");
       }
 
+      // Wait for response to complete
+      await response.json();
+      
       resetForm();
-      await loadNews(); // Wait for reload to complete
-      showNotification("✅ News updated successfully!", "success");
+      
+      // Multiple refresh strategies
+      setTimeout(() => {
+        forceRefresh();
+        showNotification("✅ News updated successfully!", "success");
+      }, 300);
+      
     } catch (err) {
       console.error("Update failed:", err);
       showNotification("❌ Failed to update news.", "error");
     }
   };
 
-  // ✅ Delete news
+  // ✅ Delete news - immediate execution without confirmation
   const handleDelete = async (slug) => {
-    if (!slug) {
-      if (!confirm("Delete empty/invalid entries?")) return;
-    } else {
-      if (!confirm("Are you sure you want to delete this news?")) return;
-    }
-
     try {
       const response = await fetch("/api/news", {
         method: "DELETE",
         headers: { 
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
         body: JSON.stringify({ slug }),
       });
@@ -190,8 +209,15 @@ export default function AdminNews() {
         throw new Error("Failed to delete news");
       }
 
-      await loadNews(); // Wait for reload to complete
-      showNotification("🗑 News deleted successfully!", "success");
+      // Wait for response to complete
+      await response.json();
+      
+      // Multiple refresh strategies
+      setTimeout(() => {
+        forceRefresh();
+        showNotification("🗑 News deleted successfully!", "success");
+      }, 300);
+      
     } catch (err) {
       console.error("Delete failed:", err);
       showNotification("❌ Failed to delete news.", "error");
@@ -211,6 +237,7 @@ export default function AdminNews() {
     });
     setEditSlug(n.slug);
     setImagePreview(n.image || null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // ✅ Reset form
@@ -358,13 +385,13 @@ export default function AdminNews() {
           <div className="flex gap-2">
             <button
               onClick={handleUpdate}
-              className="bg-green-600 text-white px-4 py-2 rounded"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
             >
               ✅ Update News
             </button>
             <button
               onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded"
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition"
             >
               ❌ Cancel
             </button>
@@ -372,7 +399,7 @@ export default function AdminNews() {
         ) : (
           <button
             onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded w-fit"
+            className="bg-blue-600 text-white px-4 py-2 rounded w-fit hover:bg-blue-700 transition"
           >
             ➕ Add News
           </button>
@@ -382,48 +409,52 @@ export default function AdminNews() {
       {/* LIST */}
       <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white">
         <ul className="space-y-3">
-          {news.map((n) => (
-            <li
-              key={n.slug || Math.random()}
-              className="flex justify-between items-start border p-3 rounded bg-gray-50 shadow-sm"
-            >
-              <div className="flex gap-3 flex-1">
-                {n.image && (
-                  <img
-                    src={n.image}
-                    alt={n.title}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                )}
-                <div>
-                  <strong className="block">{n.title}</strong>
-                  <p className="text-sm text-gray-600">{n.summary}</p>
-                  <p className="text-xs text-gray-400">
-                    {n.tag} • {n.time} • {n.readTime}
-                  </p>
-                  {n.content && (
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                      {n.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
-                    </p>
+          {news.length === 0 ? (
+            <li className="text-center text-gray-500 py-4">No news articles yet. Add your first one!</li>
+          ) : (
+            news.map((n) => (
+              <li
+                key={n.slug || Math.random()}
+                className="flex justify-between items-start border p-3 rounded bg-gray-50 shadow-sm hover:shadow-md transition"
+              >
+                <div className="flex gap-3 flex-1">
+                  {n.image && (
+                    <img
+                      src={n.image}
+                      alt={n.title}
+                      className="w-16 h-16 object-cover rounded"
+                    />
                   )}
+                  <div>
+                    <strong className="block">{n.title}</strong>
+                    <p className="text-sm text-gray-600">{n.summary}</p>
+                    <p className="text-xs text-gray-400">
+                      {n.tag} • {n.time} • {n.readTime}
+                    </p>
+                    {n.content && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        {n.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(n)}
-                  className="bg-yellow-500 text-white px-3 py-1 rounded"
-                >
-                  ✏️ Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(n.slug)}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
-                >
-                  🗑 Delete
-                </button>
-              </div>
-            </li>
-          ))}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(n)}
+                    className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition"
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(n.slug)}
+                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
+                  >
+                    🗑 Delete
+                  </button>
+                </div>
+              </li>
+            ))
+          )}
         </ul>
       </div>
 
