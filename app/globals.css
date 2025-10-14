@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fcf4ec;
+  --foreground: #000000;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+  width: 100%;
+  margin: 0;
+}
+
+/* Hide scrollbar */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Marquee Animation */
+@keyframes marquee {
+  0% { transform: translateX(100%);}
+  100% { transform: translateX(-100%);}
+}
+.marquee-container { width: 100%; overflow: hidden; }
+.marquee-container p {
+  animation: marquee 10s linear infinite;
+  white-space: nowrap;
+}
+
+/* Dark Mode: Keep the same colors */
+@media (prefers-color-scheme: dark) {
+  body { color: var(--foreground); background: var(--background);}
+}
+.dark body { color: var(--foreground); background: var(--background);}
