@@ -13,7 +13,15 @@ export default function AdminNews() {
     readTime: "",
     content: "",
   });
-  const [editSlug, setEditSlug] = useState(null); // original slug (for PUT)
+  const [editSlug, setEditSlug] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  // ✅ Show notification
+  const showNotification = (message, type = "success") => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   // ✅ Load all news
   const loadNews = async () => {
@@ -21,7 +29,6 @@ export default function AdminNews() {
       const res = await fetch("/api/news");
       let data = await res.json();
 
-      // ✅ ensure content + filter invalids
       const fixedData = data
         .map((n) => ({
           ...n,
@@ -46,12 +53,46 @@ export default function AdminNews() {
     return true;
   };
 
+  // ✅ Handle image file upload and convert to base64
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      showNotification("⚠️ Please upload a valid image file.", "error");
+      return;
+    }
+
+    // Validate file size (max 5MB for better performance)
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification("⚠️ Image size should be less than 5MB.", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setForm({ ...form, image: base64String });
+      setImagePreview(base64String);
+      showNotification("✅ Image uploaded successfully!", "success");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ✅ Replace/Remove image
+  const handleRemoveImage = () => {
+    setForm({ ...form, image: "" });
+    setImagePreview(null);
+    showNotification("🗑 Image removed successfully!", "success");
+  };
+
   // ✅ Add news
   const handleAdd = async () => {
     const newNews = { ...form, slug: slugify(form.title) };
 
     if (!isValid(newNews)) {
-      alert("⚠️ Title and Content are required.");
+      showNotification("⚠️ Title and Content are required.", "error");
       return;
     }
 
@@ -64,21 +105,23 @@ export default function AdminNews() {
 
       resetForm();
       loadNews();
+      showNotification("✅ News added successfully!", "success");
     } catch (err) {
       console.error("Add failed:", err);
+      showNotification("❌ Failed to add news.", "error");
     }
   };
 
   // ✅ Update news
   const handleUpdate = async () => {
     if (!isValid(form)) {
-      alert("⚠️ Title and Content are required.");
+      showNotification("⚠️ Title and Content are required.", "error");
       return;
     }
 
     const updatedNews = {
       ...form,
-      slug: editSlug, // always keep original slug
+      slug: editSlug,
     };
 
     try {
@@ -90,15 +133,16 @@ export default function AdminNews() {
 
       resetForm();
       loadNews();
+      showNotification("✅ News updated successfully!", "success");
     } catch (err) {
       console.error("Update failed:", err);
+      showNotification("❌ Failed to update news.", "error");
     }
   };
 
   // ✅ Delete news
   const handleDelete = async (slug) => {
     if (!slug) {
-      // cleanup of junk entries
       if (!confirm("Delete empty/invalid entries?")) return;
     } else {
       if (!confirm("Are you sure you want to delete this news?")) return;
@@ -111,8 +155,10 @@ export default function AdminNews() {
         body: JSON.stringify({ slug }),
       });
       loadNews();
+      showNotification("🗑 News deleted successfully!", "success");
     } catch (err) {
       console.error("Delete failed:", err);
+      showNotification("❌ Failed to delete news.", "error");
     }
   };
 
@@ -127,7 +173,8 @@ export default function AdminNews() {
       readTime: n.readTime,
       content: n.content || n.description || "",
     });
-    setEditSlug(n.slug); // store original slug
+    setEditSlug(n.slug);
+    setImagePreview(n.image || null);
   };
 
   // ✅ Reset form
@@ -142,11 +189,31 @@ export default function AdminNews() {
       content: "",
     });
     setEditSlug(null);
+    setImagePreview(null);
   };
 
   return (
     <div className="p-4 border rounded mb-8 bg-gray-50">
       <h1 className="text-xl font-bold mb-4">📰 Manage News</h1>
+
+      {/* ✅ NOTIFICATION TOAST */}
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg transform transition-all duration-300 animate-slide-in ${
+            notification.type === "success"
+              ? "bg-green-500 text-white"
+              : "bg-red-500 text-white"
+          }`}
+        >
+          <span className="text-lg font-medium">{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 text-white hover:text-gray-200 font-bold text-xl"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* FORM */}
       <div className="mb-6 grid gap-3">
@@ -162,12 +229,69 @@ export default function AdminNews() {
           placeholder="Summary"
           className="border p-2 w-full rounded"
         />
-        <input
-          value={form.image}
-          onChange={(e) => setForm({ ...form, image: e.target.value })}
-          placeholder="Image URL"
-          className="border p-2 w-full rounded"
-        />
+
+        {/* ✅ IMAGE UPLOAD SECTION */}
+        <div className="border p-3 rounded bg-white">
+          <label className="block text-sm font-medium mb-2">Image</label>
+
+          {imagePreview ? (
+            <div className="space-y-2">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-full max-w-xs h-40 object-cover rounded border"
+              />
+              <div className="flex gap-2">
+                <label className="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-600 transition">
+                  🔄 Replace Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+                >
+                  🗑 Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-500 transition">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <svg
+                  className="w-10 h-10 mb-3 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                <p className="text-sm text-gray-500">
+                  <span className="font-semibold">Click to upload</span> or drag
+                  and drop
+                </p>
+                <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 5MB)</p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
         <input
           value={form.tag}
           onChange={(e) => setForm({ ...form, tag: e.target.value })}
@@ -224,20 +348,29 @@ export default function AdminNews() {
         <ul className="space-y-3">
           {news.map((n) => (
             <li
-              key={n.slug || Math.random()} // safe fallback
+              key={n.slug || Math.random()}
               className="flex justify-between items-start border p-3 rounded bg-gray-50 shadow-sm"
             >
-              <div>
-                <strong className="block">{n.title}</strong>
-                <p className="text-sm text-gray-600">{n.summary}</p>
-                <p className="text-xs text-gray-400">
-                  {n.tag} • {n.time} • {n.readTime}
-                </p>
-                {n.content && (
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                    {n.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
-                  </p>
+              <div className="flex gap-3 flex-1">
+                {n.image && (
+                  <img
+                    src={n.image}
+                    alt={n.title}
+                    className="w-16 h-16 object-cover rounded"
+                  />
                 )}
+                <div>
+                  <strong className="block">{n.title}</strong>
+                  <p className="text-sm text-gray-600">{n.summary}</p>
+                  <p className="text-xs text-gray-400">
+                    {n.tag} • {n.time} • {n.readTime}
+                  </p>
+                  {n.content && (
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                      {n.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -257,6 +390,23 @@ export default function AdminNews() {
           ))}
         </ul>
       </div>
+
+      {/* ✅ ADD ANIMATION STYLES */}
+      <style jsx>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
