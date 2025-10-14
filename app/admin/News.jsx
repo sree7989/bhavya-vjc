@@ -24,15 +24,17 @@ export default function AdminNews() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // ✅ Load all news
+  // ✅ Load all news - MAXIMUM CACHE BUSTING
   const loadNews = async () => {
     try {
       setIsLoading(true);
       
-      const timestamp = new Date().getTime();
-      const random = Math.random().toString(36).substring(7);
+      // Triple cache-busting strategy
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 15);
+      const extra = performance.now().toString(36).substring(2, 15);
       
-      const res = await fetch(`/api/news?_t=${timestamp}&_r=${random}`, {
+      const res = await fetch(`/api/news?_t=${timestamp}&_r=${random}&_x=${extra}`, {
         method: "GET",
         cache: "no-store",
         headers: {
@@ -108,7 +110,7 @@ export default function AdminNews() {
     showNotification("🗑 Image removed successfully!", "success");
   };
 
-  // ✅ Add news with HARD RELOAD
+  // ✅ Add news - NO RELOAD
   const handleAdd = async () => {
     const newNews = { ...form, slug: slugify(form.title) };
 
@@ -120,11 +122,15 @@ export default function AdminNews() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/news", {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 15);
+      
+      const response = await fetch(`/api/news?_bust=${timestamp}_${random}`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
         body: JSON.stringify(newNews),
       });
@@ -135,12 +141,15 @@ export default function AdminNews() {
 
       await response.json();
       
-      showNotification("✅ News added successfully! Refreshing...", "success");
+      resetForm();
       
-      // Wait 1 second then hard reload page
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Wait 2 seconds for Vercel database commit
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Reload data - this will show the new item
+      await loadNews();
+      
+      showNotification("✅ News added successfully!", "success");
       
     } catch (err) {
       console.error("Add failed:", err);
@@ -149,7 +158,7 @@ export default function AdminNews() {
     }
   };
 
-  // ✅ Update news with HARD RELOAD
+  // ✅ Update news - NO RELOAD
   const handleUpdate = async () => {
     if (!isValid(form)) {
       showNotification("⚠️ Title and Content are required.", "error");
@@ -164,11 +173,15 @@ export default function AdminNews() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/news", {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 15);
+      
+      const response = await fetch(`/api/news?_bust=${timestamp}_${random}`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
         body: JSON.stringify(updatedNews),
       });
@@ -179,12 +192,15 @@ export default function AdminNews() {
 
       await response.json();
       
-      showNotification("✅ News updated successfully! Refreshing...", "success");
+      resetForm();
       
-      // Wait 1 second then hard reload page
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Wait 2 seconds for Vercel database commit
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Reload data - this will show the updated item
+      await loadNews();
+      
+      showNotification("✅ News updated successfully!", "success");
       
     } catch (err) {
       console.error("Update failed:", err);
@@ -193,18 +209,22 @@ export default function AdminNews() {
     }
   };
 
-  // ✅ Delete news with HARD RELOAD - NO CONFIRMATION
+  // ✅ Delete news - NO RELOAD - NO CONFIRMATION
   const handleDelete = async (slug) => {
     setIsLoading(true);
     
     showNotification("🗑 Deleting news...", "success");
 
     try {
-      const response = await fetch("/api/news", {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 15);
+      
+      const response = await fetch(`/api/news?_bust=${timestamp}_${random}`, {
         method: "DELETE",
         headers: { 
           "Content-Type": "application/json",
           "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
         body: JSON.stringify({ slug }),
       });
@@ -215,12 +235,13 @@ export default function AdminNews() {
 
       await response.json();
       
-      showNotification("🗑 News deleted successfully! Refreshing...", "success");
+      // Wait 2 seconds for Vercel database commit
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Wait 1 second then hard reload page
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Reload data - deleted item will be gone
+      await loadNews();
+      
+      showNotification("🗑 News deleted successfully!", "success");
       
     } catch (err) {
       console.error("Delete failed:", err);
