@@ -24,18 +24,18 @@ export default function AdminNews() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // ✅ Load all news with aggressive cache-busting
-  const loadNews = async (silent = false) => {
+  // ✅ Load all news - FORCED FRESH DATA EVERY TIME
+  const loadNews = async () => {
     try {
-      if (!silent) setIsLoading(true);
+      setIsLoading(true);
       
-      // Multiple cache-busting strategies combined
+      // Aggressive cache-busting
       const timestamp = new Date().getTime();
       const random = Math.random().toString(36).substring(7);
+      
       const res = await fetch(`/api/news?_t=${timestamp}&_r=${random}`, {
         method: "GET",
         cache: "no-store",
-        next: { revalidate: 0 },
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
           "Pragma": "no-cache",
@@ -57,13 +57,12 @@ export default function AdminNews() {
         .filter((n) => n.title?.trim() && n.slug?.trim());
 
       setNews(fixedData);
+      
     } catch (err) {
       console.error("Failed to load news:", err);
-      if (!silent) {
-        showNotification("❌ Failed to load news.", "error");
-      }
+      showNotification("❌ Failed to load news.", "error");
     } finally {
-      if (!silent) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -83,13 +82,11 @@ export default function AdminNews() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       showNotification("⚠️ Please upload a valid image file.", "error");
       return;
     }
 
-    // Validate file size (max 5MB for better performance)
     if (file.size > 5 * 1024 * 1024) {
       showNotification("⚠️ Image size should be less than 5MB.", "error");
       return;
@@ -112,7 +109,7 @@ export default function AdminNews() {
     showNotification("🗑 Image removed successfully!", "success");
   };
 
-  // ✅ Add news with optimistic update
+  // ✅ Add news - SIMPLE VERSION
   const handleAdd = async () => {
     const newNews = { ...form, slug: slugify(form.title) };
 
@@ -121,17 +118,7 @@ export default function AdminNews() {
       return;
     }
 
-    // Optimistic update - add to UI immediately
-    const optimisticNews = {
-      ...newNews,
-      _optimistic: true,
-    };
-    setNews((prevNews) => [...prevNews, optimisticNews]);
-    
-    // Reset form immediately for better UX
-    const formBackup = { ...form };
-    const previewBackup = imagePreview;
-    resetForm();
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/news", {
@@ -147,28 +134,26 @@ export default function AdminNews() {
         throw new Error("Failed to add news");
       }
 
-      const result = await response.json();
+      await response.json();
       
-      // Wait a bit for database to fully commit
-      await new Promise(resolve => setTimeout(resolve, 800));
+      resetForm();
       
-      // Reload from server to get actual data
-      await loadNews(true);
+      // Wait longer for Vercel database to commit
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Reload fresh data from server
+      await loadNews();
+      
       showNotification("✅ News added successfully!", "success");
       
     } catch (err) {
       console.error("Add failed:", err);
-      
-      // Rollback optimistic update on error
-      setNews((prevNews) => prevNews.filter(n => !n._optimistic));
-      setForm(formBackup);
-      setImagePreview(previewBackup);
-      
       showNotification("❌ Failed to add news.", "error");
+      setIsLoading(false);
     }
   };
 
-  // ✅ Update news with optimistic update
+  // ✅ Update news - SIMPLE VERSION
   const handleUpdate = async () => {
     if (!isValid(form)) {
       showNotification("⚠️ Title and Content are required.", "error");
@@ -180,15 +165,7 @@ export default function AdminNews() {
       slug: editSlug,
     };
 
-    // Optimistic update - update UI immediately
-    const previousNews = [...news];
-    setNews((prevNews) =>
-      prevNews.map((n) => (n.slug === editSlug ? updatedNews : n))
-    );
-    
-    // Reset form immediately
-    const slugBackup = editSlug;
-    resetForm();
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/news", {
@@ -204,33 +181,29 @@ export default function AdminNews() {
         throw new Error("Failed to update news");
       }
 
-      const result = await response.json();
+      await response.json();
       
-      // Wait a bit for database to fully commit
-      await new Promise(resolve => setTimeout(resolve, 800));
+      resetForm();
       
-      // Reload from server to get actual data
-      await loadNews(true);
+      // Wait longer for Vercel database to commit
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Reload fresh data from server
+      await loadNews();
+      
       showNotification("✅ News updated successfully!", "success");
       
     } catch (err) {
       console.error("Update failed:", err);
-      
-      // Rollback optimistic update on error
-      setNews(previousNews);
-      setEditSlug(slugBackup);
-      
       showNotification("❌ Failed to update news.", "error");
+      setIsLoading(false);
     }
   };
 
-  // ✅ Delete news with optimistic update - immediate execution
+  // ✅ Delete news - SIMPLE VERSION - NO CONFIRMATION
   const handleDelete = async (slug) => {
-    // Optimistic update - remove from UI immediately
-    const previousNews = [...news];
-    setNews((prevNews) => prevNews.filter((n) => n.slug !== slug));
+    setIsLoading(true);
     
-    // Show deleting notification immediately
     showNotification("🗑 Deleting news...", "success");
 
     try {
@@ -247,22 +220,20 @@ export default function AdminNews() {
         throw new Error("Failed to delete news");
       }
 
-      const result = await response.json();
+      await response.json();
       
-      // Wait a bit for database to fully commit
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Wait longer for Vercel database to commit
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Reload from server to confirm deletion
-      await loadNews(true);
+      // Reload fresh data from server
+      await loadNews();
+      
       showNotification("🗑 News deleted successfully!", "success");
       
     } catch (err) {
       console.error("Delete failed:", err);
-      
-      // Rollback optimistic update on error
-      setNews(previousNews);
-      
       showNotification("❌ Failed to delete news.", "error");
+      setIsLoading(false);
     }
   };
 
@@ -322,10 +293,10 @@ export default function AdminNews() {
 
       {/* ✅ LOADING OVERLAY */}
       {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 z-40 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg shadow-xl">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-700 font-medium">Loading news...</p>
+            <p className="mt-4 text-gray-700 font-medium">Processing...</p>
           </div>
         </div>
       )}
@@ -396,8 +367,7 @@ export default function AdminNews() {
                   />
                 </svg>
                 <p className="text-sm text-gray-500">
-                  <span className="font-semibold">Click to upload</span> or drag
-                  and drop
+                  <span className="font-semibold">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 5MB)</p>
               </div>
@@ -481,7 +451,7 @@ export default function AdminNews() {
             news.map((n) => (
               <li
                 key={n.slug || Math.random()}
-                className={`flex justify-between items-start border p-3 rounded bg-gray-50 shadow-sm hover:shadow-md transition ${n._optimistic ? 'opacity-60' : ''}`}
+                className="flex justify-between items-start border p-3 rounded bg-gray-50 shadow-sm hover:shadow-md transition"
               >
                 <div className="flex gap-3 flex-1">
                   {n.image && (
@@ -508,14 +478,14 @@ export default function AdminNews() {
                   <button
                     onClick={() => handleEdit(n)}
                     className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition disabled:opacity-50"
-                    disabled={isLoading || n._optimistic}
+                    disabled={isLoading}
                   >
                     ✏️ Edit
                   </button>
                   <button
                     onClick={() => handleDelete(n.slug)}
                     className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition disabled:opacity-50"
-                    disabled={isLoading || n._optimistic}
+                    disabled={isLoading}
                   >
                     🗑 Delete
                   </button>
