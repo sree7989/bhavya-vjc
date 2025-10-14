@@ -23,10 +23,18 @@ export default function AdminNews() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // ✅ Load all news
+  // ✅ Load all news with cache-busting
   const loadNews = async () => {
     try {
-      const res = await fetch("/api/news");
+      // Add timestamp to prevent Vercel caching
+      const timestamp = Date.now();
+      const res = await fetch(`/api/news?t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      });
       let data = await res.json();
 
       const fixedData = data
@@ -97,15 +105,23 @@ export default function AdminNews() {
     }
 
     try {
-      await fetch("/api/news", {
+      const res = await fetch("/api/news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newNews),
+        cache: "no-store",
       });
 
-      resetForm();
-      loadNews();
-      showNotification("✅ News added successfully!", "success");
+      if (res.ok) {
+        resetForm();
+        // Wait a moment before reloading to ensure data is saved
+        setTimeout(() => {
+          loadNews();
+        }, 500);
+        showNotification("✅ News added successfully!", "success");
+      } else {
+        throw new Error("Failed to add news");
+      }
     } catch (err) {
       console.error("Add failed:", err);
       showNotification("❌ Failed to add news.", "error");
@@ -125,15 +141,23 @@ export default function AdminNews() {
     };
 
     try {
-      await fetch("/api/news", {
+      const res = await fetch("/api/news", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedNews),
+        cache: "no-store",
       });
 
-      resetForm();
-      loadNews();
-      showNotification("✅ News updated successfully!", "success");
+      if (res.ok) {
+        resetForm();
+        // Wait a moment before reloading to ensure data is saved
+        setTimeout(() => {
+          loadNews();
+        }, 500);
+        showNotification("✅ News updated successfully!", "success");
+      } else {
+        throw new Error("Failed to update news");
+      }
     } catch (err) {
       console.error("Update failed:", err);
       showNotification("❌ Failed to update news.", "error");
@@ -149,13 +173,22 @@ export default function AdminNews() {
     }
 
     try {
-      await fetch("/api/news", {
+      const res = await fetch("/api/news", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug }),
+        cache: "no-store",
       });
-      loadNews();
-      showNotification("🗑 News deleted successfully!", "success");
+
+      if (res.ok) {
+        // Wait a moment before reloading to ensure data is deleted
+        setTimeout(() => {
+          loadNews();
+        }, 500);
+        showNotification("🗑 News deleted successfully!", "success");
+      } else {
+        throw new Error("Failed to delete news");
+      }
     } catch (err) {
       console.error("Delete failed:", err);
       showNotification("❌ Failed to delete news.", "error");
@@ -322,13 +355,13 @@ export default function AdminNews() {
           <div className="flex gap-2">
             <button
               onClick={handleUpdate}
-              className="bg-green-600 text-white px-4 py-2 rounded"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
             >
               ✅ Update News
             </button>
             <button
               onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded"
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition"
             >
               ❌ Cancel
             </button>
@@ -336,7 +369,7 @@ export default function AdminNews() {
         ) : (
           <button
             onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded w-fit"
+            className="bg-blue-600 text-white px-4 py-2 rounded w-fit hover:bg-blue-700 transition"
           >
             ➕ Add News
           </button>
@@ -375,13 +408,13 @@ export default function AdminNews() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(n)}
-                  className="bg-yellow-500 text-white px-3 py-1 rounded"
+                  className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition"
                 >
                   ✏️ Edit
                 </button>
                 <button
                   onClick={() => handleDelete(n.slug)}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
+                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
                 >
                   🗑 Delete
                 </button>
