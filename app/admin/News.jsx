@@ -26,15 +26,20 @@ export default function AdminNews() {
   // ✅ Load all news with cache-busting
   const loadNews = async () => {
     try {
-      // Add timestamp to prevent Vercel caching
-      const timestamp = Date.now();
-      const res = await fetch(`/api/news?t=${timestamp}`, {
-        cache: "no-store",
+      const res = await fetch("/api/news", {
+        method: "GET",
+        cache: "no-store", // Disable caching
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
+          "Pragma": "no-cache",
+          "Expires": "0",
         },
       });
+      
+      if (!res.ok) {
+        throw new Error("Failed to fetch news");
+      }
+      
       let data = await res.json();
 
       const fixedData = data
@@ -47,6 +52,7 @@ export default function AdminNews() {
       setNews(fixedData);
     } catch (err) {
       console.error("Failed to load news:", err);
+      showNotification("❌ Failed to load news.", "error");
     }
   };
 
@@ -105,23 +111,22 @@ export default function AdminNews() {
     }
 
     try {
-      const res = await fetch("/api/news", {
+      const response = await fetch("/api/news", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
         body: JSON.stringify(newNews),
-        cache: "no-store",
       });
 
-      if (res.ok) {
-        resetForm();
-        // Wait a moment before reloading to ensure data is saved
-        setTimeout(() => {
-          loadNews();
-        }, 500);
-        showNotification("✅ News added successfully!", "success");
-      } else {
+      if (!response.ok) {
         throw new Error("Failed to add news");
       }
+
+      resetForm();
+      await loadNews(); // Wait for reload to complete
+      showNotification("✅ News added successfully!", "success");
     } catch (err) {
       console.error("Add failed:", err);
       showNotification("❌ Failed to add news.", "error");
@@ -141,23 +146,22 @@ export default function AdminNews() {
     };
 
     try {
-      const res = await fetch("/api/news", {
+      const response = await fetch("/api/news", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
         body: JSON.stringify(updatedNews),
-        cache: "no-store",
       });
 
-      if (res.ok) {
-        resetForm();
-        // Wait a moment before reloading to ensure data is saved
-        setTimeout(() => {
-          loadNews();
-        }, 500);
-        showNotification("✅ News updated successfully!", "success");
-      } else {
+      if (!response.ok) {
         throw new Error("Failed to update news");
       }
+
+      resetForm();
+      await loadNews(); // Wait for reload to complete
+      showNotification("✅ News updated successfully!", "success");
     } catch (err) {
       console.error("Update failed:", err);
       showNotification("❌ Failed to update news.", "error");
@@ -173,22 +177,21 @@ export default function AdminNews() {
     }
 
     try {
-      const res = await fetch("/api/news", {
+      const response = await fetch("/api/news", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
         body: JSON.stringify({ slug }),
-        cache: "no-store",
       });
 
-      if (res.ok) {
-        // Wait a moment before reloading to ensure data is deleted
-        setTimeout(() => {
-          loadNews();
-        }, 500);
-        showNotification("🗑 News deleted successfully!", "success");
-      } else {
+      if (!response.ok) {
         throw new Error("Failed to delete news");
       }
+
+      await loadNews(); // Wait for reload to complete
+      showNotification("🗑 News deleted successfully!", "success");
     } catch (err) {
       console.error("Delete failed:", err);
       showNotification("❌ Failed to delete news.", "error");
@@ -355,13 +358,13 @@ export default function AdminNews() {
           <div className="flex gap-2">
             <button
               onClick={handleUpdate}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+              className="bg-green-600 text-white px-4 py-2 rounded"
             >
               ✅ Update News
             </button>
             <button
               onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition"
+              className="bg-gray-400 text-white px-4 py-2 rounded"
             >
               ❌ Cancel
             </button>
@@ -369,7 +372,7 @@ export default function AdminNews() {
         ) : (
           <button
             onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded w-fit hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white px-4 py-2 rounded w-fit"
           >
             ➕ Add News
           </button>
@@ -408,13 +411,13 @@ export default function AdminNews() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(n)}
-                  className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition"
+                  className="bg-yellow-500 text-white px-3 py-1 rounded"
                 >
                   ✏️ Edit
                 </button>
                 <button
                   onClick={() => handleDelete(n.slug)}
-                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
+                  className="bg-red-500 text-white px-3 py-1 rounded"
                 >
                   🗑 Delete
                 </button>
