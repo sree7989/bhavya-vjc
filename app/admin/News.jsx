@@ -24,44 +24,45 @@ export default function AdminNews() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // ✅ Load all news - MAXIMUM CACHE BUSTING
+  // ✅ Load all news - WITH PROPER ERROR HANDLING
   const loadNews = async () => {
     try {
       setIsLoading(true);
-      
-      // Triple cache-busting strategy
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 15);
-      const extra = performance.now().toString(36).substring(2, 15);
-      
-      const res = await fetch(`/api/news?_t=${timestamp}&_r=${random}&_x=${extra}`, {
-        method: "GET",
+      const res = await fetch("/api/news", {
         cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-          "Pragma": "no-cache",
-          "Expires": "0",
+          "Cache-Control": "no-cache",
         },
       });
-      
+
       if (!res.ok) {
-        throw new Error("Failed to fetch news");
+        throw new Error(`HTTP error! status: ${res.status}`);
       }
-      
-      let data = await res.json();
 
-      const fixedData = data
-        .map((n) => ({
-          ...n,
-          content: n.content || n.description || "",
-        }))
-        .filter((n) => n.title?.trim() && n.slug?.trim());
+      const data = await res.json();
+      console.log("Loaded news:", data); // Debug log
 
-      setNews(fixedData);
-      
+      // Handle both array and error responses
+      if (Array.isArray(data)) {
+        const fixedData = data
+          .map((n) => ({
+            ...n,
+            content: n.content || n.description || "",
+          }))
+          .filter((n) => n.title?.trim() && n.slug?.trim());
+
+        setNews(fixedData);
+      } else if (data.error) {
+        console.error("API Error:", data.error);
+        showNotification("❌ " + data.error, "error");
+        setNews([]);
+      } else {
+        setNews([]);
+      }
     } catch (err) {
       console.error("Failed to load news:", err);
-      showNotification("❌ Failed to load news.", "error");
+      showNotification("❌ Failed to load news: " + err.message, "error");
+      setNews([]);
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +111,7 @@ export default function AdminNews() {
     showNotification("🗑 Image removed successfully!", "success");
   };
 
-  // ✅ Add news - NO RELOAD
+  // ✅ Add news
   const handleAdd = async () => {
     const newNews = { ...form, slug: slugify(form.title) };
 
@@ -122,43 +123,34 @@ export default function AdminNews() {
     setIsLoading(true);
 
     try {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 15);
-      
-      const response = await fetch(`/api/news?_bust=${timestamp}_${random}`, {
+      const response = await fetch("/api/news", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newNews),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to add news");
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add");
       }
 
-      await response.json();
-      
+      const result = await response.json();
+      console.log("Add result:", result);
+
       resetForm();
-      
-      // Wait 2 seconds for Vercel database commit
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Reload data - this will show the new item
-      await loadNews();
-      
       showNotification("✅ News added successfully!", "success");
       
+      // Reload after 1 second to ensure database commit
+      setTimeout(() => loadNews(), 1000);
     } catch (err) {
       console.error("Add failed:", err);
-      showNotification("❌ Failed to add news.", "error");
+      showNotification("❌ Failed to add news: " + err.message, "error");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // ✅ Update news - NO RELOAD
+  // ✅ Update news
   const handleUpdate = async () => {
     if (!isValid(form)) {
       showNotification("⚠️ Title and Content are required.", "error");
@@ -173,79 +165,54 @@ export default function AdminNews() {
     setIsLoading(true);
 
     try {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 15);
-      
-      const response = await fetch(`/api/news?_bust=${timestamp}_${random}`, {
+      const response = await fetch("/api/news", {
         method: "PUT",
-        headers: { 
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedNews),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update news");
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update");
       }
 
-      await response.json();
-      
       resetForm();
-      
-      // Wait 2 seconds for Vercel database commit
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Reload data - this will show the updated item
-      await loadNews();
-      
       showNotification("✅ News updated successfully!", "success");
       
+      setTimeout(() => loadNews(), 1000);
     } catch (err) {
       console.error("Update failed:", err);
-      showNotification("❌ Failed to update news.", "error");
+      showNotification("❌ Failed to update news: " + err.message, "error");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // ✅ Delete news - NO RELOAD - NO CONFIRMATION
+  // ✅ Delete news
   const handleDelete = async (slug) => {
+    if (!confirm("Are you sure you want to delete this news?")) return;
+
     setIsLoading(true);
-    
-    showNotification("🗑 Deleting news...", "success");
 
     try {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 15);
-      
-      const response = await fetch(`/api/news?_bust=${timestamp}_${random}`, {
+      const response = await fetch("/api/news", {
         method: "DELETE",
-        headers: { 
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete news");
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete");
       }
 
-      await response.json();
-      
-      // Wait 2 seconds for Vercel database commit
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Reload data - deleted item will be gone
-      await loadNews();
-      
       showNotification("🗑 News deleted successfully!", "success");
       
+      setTimeout(() => loadNews(), 1000);
     } catch (err) {
       console.error("Delete failed:", err);
-      showNotification("❌ Failed to delete news.", "error");
+      showNotification("❌ Failed to delete news: " + err.message, "error");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -429,14 +396,14 @@ export default function AdminNews() {
           <div className="flex gap-2">
             <button
               onClick={handleUpdate}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition disabled:opacity-50"
               disabled={isLoading}
             >
               ✅ Update News
             </button>
             <button
               onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition disabled:opacity-50"
               disabled={isLoading}
             >
               ❌ Cancel
@@ -445,7 +412,7 @@ export default function AdminNews() {
         ) : (
           <button
             onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded w-fit hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-600 text-white px-4 py-2 rounded w-fit hover:bg-blue-700 transition disabled:opacity-50"
             disabled={isLoading}
           >
             ➕ Add News

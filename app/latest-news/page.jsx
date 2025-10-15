@@ -7,21 +7,24 @@ import { allNews as staticNews } from './news-data';
 import slugify from './slugify';
 import Form from './Form';
 
-// ✅ Fetch from API (news-data.json)
+
+// ✅ Fetch from API (Neon Database) - ONLY THIS CHANGED
 const fetchNewData = async () => {
   try {
     const res = await fetch('/api/news', { cache: 'no-store' });
     if (!res.ok) return [];
     return await res.json();
   } catch (err) {
-    console.error('Error loading new-data.json:', err);
+    console.error('Error loading news from API:', err);
     return [];
   }
 };
 
+
 function NewsTickerBar({ news }) {
   const [active, setActive] = useState(0);
   const intervalRef = useRef(null);
+
 
   useEffect(() => {
     if (news.length === 0) return;
@@ -31,7 +34,9 @@ function NewsTickerBar({ news }) {
     return () => intervalRef.current && clearInterval(intervalRef.current);
   }, [news.length]);
 
+
   if (news.length === 0) return null;
+
 
   return (
     <div className="w-full flex justify-center px-2 z-10 mt-20 relative">
@@ -79,9 +84,11 @@ function NewsTickerBar({ news }) {
   );
 }
 
+
 export default function LatestNewsMagazine() {
   const [dynamicNews, setDynamicNews] = useState([]);
   const [visibleCount, setVisibleCount] = useState(4);
+
 
   useEffect(() => {
     (async () => {
@@ -90,22 +97,27 @@ export default function LatestNewsMagazine() {
     })();
   }, []);
 
+
   // ✅ Only static for everything except "Latest Global Immigration Updates"
   const mainStory = staticNews[0] || {};
   const nextStories = staticNews.slice(1, 5);
   const visaNews = staticNews.slice(5, 9);
   const tickerNews = staticNews.slice(5, 9);
 
+
   // ✅ Combined static + dynamic for "Latest Global Immigration Updates"
   const immigrationUpdates = [...dynamicNews, ...staticNews];
 
+
   const hasMore = visibleCount < immigrationUpdates.length;
   const showMore = () => setVisibleCount((prev) => prev + 4);
+
 
   return (
     <main className="min-h-screen w-full bg-gradient-to-b from-[#f7fafc] to-white">
       {/* 🔥 News Ticker */}
       <NewsTickerBar news={tickerNews} />
+
 
       <div className="max-w-6xl mx-auto flex flex-col gap-10 w-full pt-6 px-2 md:px-0">
         {/* ✅ Main Story (only static) */}
@@ -135,12 +147,14 @@ export default function LatestNewsMagazine() {
           </div>
         </section>
 
+
         {/* 🔥 Latest Global Immigration Updates (✅ static + dynamic combined) */}
         <div>
           <div className="flex items-center justify-between mb-4 mt-6">
             <h2 className="font-bold text-xl md:text-2xl text-[#1681c4]">Latest Global Immigration Updates</h2>
             <Link href="/latest-news" className="text-[#ff9000] text-sm font-semibold hover:underline">View All</Link>
           </div>
+
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {immigrationUpdates.slice(0, visibleCount).map((item, i) => (
@@ -179,6 +193,7 @@ export default function LatestNewsMagazine() {
             ))}
           </div>
 
+
           {/* Show More / Show Less */}
           <div className="flex justify-center mt-6">
             {visibleCount < immigrationUpdates.length ? (
@@ -198,6 +213,7 @@ export default function LatestNewsMagazine() {
             )}
           </div>
         </div>
+
 
         {/* More Top Stories (only static) */}
         <div>
@@ -231,6 +247,7 @@ export default function LatestNewsMagazine() {
             ))}
           </div>
         </div>
+
 
         {/* Visa News (only static) */}
         <div>
@@ -266,6 +283,7 @@ export default function LatestNewsMagazine() {
         </div>
       </div>
 
+
       {/* Form & Why Choose Us */}
       <div className="max-w-5xl mx-auto my-12 px-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -293,6 +311,7 @@ export default function LatestNewsMagazine() {
           </div>
         </div>
       </div>
+
 
       {/* Call-to-Action */}
       <div

@@ -1,39 +1,40 @@
-import fs from "fs";
-import path from "path";
 import { allNews as staticNews } from "../news-data";
 import slugify from "../slugify";
 import NewsArticleClient from "./NewsArticleClient";
 
-// ✅ Helper: read dynamic news-data.json
-function getDynamicNews() {
+// ✅ Fetch from API with environment variable
+async function getDynamicNews() {
   try {
-    const filePath = path.join(process.cwd(), "news-data.json");
-    if (fs.existsSync(filePath)) {
-      const fileData = fs.readFileSync(filePath, "utf-8");
-      return JSON.parse(fileData);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/news`, { 
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    });
+    if (res.ok) {
+      return await res.json();
     }
   } catch (err) {
-    console.error("Error reading news-data.json:", err);
+    console.error("Error loading news from API:", err);
   }
   return [];
 }
 
 // ✅ Merge static + dynamic
-function getAllNews() {
-  const dynamicNews = getDynamicNews();
+async function getAllNews() {
+  const dynamicNews = await getDynamicNews();
   return [...dynamicNews, ...staticNews];
 }
 
 // ✅ Generate dynamic static paths
-export function generateStaticParams() {
-  const allNews = getAllNews();
+export async function generateStaticParams() {
+  const allNews = await getAllNews();
   return allNews.map((item) => ({ slug: slugify(item.title) }));
 }
 
 // ✅ Dynamic meta based on slug/title
-export function generateMetadata({ params }) {
-  const { slug } = params;
-  const allNews = getAllNews();
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const allNews = await getAllNews();
   const story = allNews.find((n) => slugify(n.title) === slug);
 
   if (!story) {
@@ -53,9 +54,9 @@ export function generateMetadata({ params }) {
 }
 
 // ✅ Page component
-export default function NewsArticlePage({ params }) {
-  const { slug } = params;
-  const allNews = getAllNews();
+export default async function NewsArticlePage({ params }) {
+  const { slug } = await params;
+  const allNews = await getAllNews();
 
   const story = allNews.find((n) => slugify(n.title) === slug) || allNews[0];
   const otherStories = allNews.filter((n) => slugify(n.title) !== slug);

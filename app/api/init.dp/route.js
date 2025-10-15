@@ -7,7 +7,6 @@ export async function GET() {
   try {
     const sql = neon(process.env.DATABASE_URL);
     
-    // Create news table
     await sql`
       CREATE TABLE IF NOT EXISTS news (
         id SERIAL PRIMARY KEY,
