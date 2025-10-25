@@ -1,0 +1,47 @@
+'use client';
+import React, { useEffect, useState } from "react";
+
+const backgroundImages = [
+  "/bali-tour.jpg",
+  "/Tour-du-lich-maldives.jpg",
+  "/Andaman-and-Nicobar-Islands-Package.jpg",
+  "/dubaivisit.avif",
+];
+
+const USAImageContent = () => {
+  const [bgIndex, setBgIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBgIndex((prev) => (prev + 1) % backgroundImages.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      className="relative rounded-xl overflow-hidden pt-4 md:pt-6 px-6 md:px-10 pb-4 text-white"
+      style={{
+        backgroundImage: `url(${backgroundImages[bgIndex]})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        transition: "background-image 1s ease-in-out",
+      }}
+    >
+      <div className="absolute inset-0 bg-black bg-opacity-70 z-0" />
+      <div className="relative z-10 space-y-3 mt-0 md:-mt-4">
+        <h2 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-white to-red-600 bg-clip-text text-transparent drop-shadow-lg">
+          Study in USA 2025
+        </h2>
+        <p className="text-sm sm:text-base font-medium leading-relaxed text-white">
+          Discover amazing study and travel opportunities in the{" "}
+          <span className="text-blue-400 font-semibold">USA</span>. Book{" "}
+          <span className="text-blue-400 font-semibold">affordable flights</span> with instant e-tickets and 24/7 support. Explore{" "}
+          <span className="text-blue-400 font-semibold">tailored study programs</span> and travel packages designed for your success and adventure.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default USAImageContent;
