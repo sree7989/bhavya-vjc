@@ -21,6 +21,8 @@ import Malaysia from "./Malaysia";
 import Poland from "./Poland";
 import Malta from "./Malta";
 import Link from "next/link";
+import Spain from "./Spain";
+import Sweden from "./Sweden";
 
 const visaData = [
   { name: "Canada Resume Marketing", image: "/canadaresume1.webp", path: "/resume-marketing/canada" },
@@ -37,6 +39,8 @@ const visaData = [
   { name: "Malaysia Resume Marketing", image: "/malaysiaresume.jpg", path: "/resume-marketing/malaysia" },
   { name: "Poland Resume Marketing", image: "/polandresume.jpg", path: "/resume-marketing/poland" },
   { name: "Malta Resume Marketing", image: "/maltaresume.jpg", path: "/resume-marketing/malta" },
+   { name: "Spain Resume Marketing", image: "/spainresume.jpg", path: "/resume-marketing/spain" },
+    { name: "Sweden Resume Marketing", image: "/swedenresume.jpg", path: "/resume-marketing/sweden" },
 ];
 const defaultVisa = {
   name: "Permanent Residency Visa",
@@ -164,6 +168,10 @@ const Migrate = () => {
               <Poland />
             ) : selectedVisa.path === "/resume-marketing/malta" ? (
               <Malta />
+              ) : selectedVisa.path === "/resume-marketing/spain" ? (
+              <Spain />
+               ) : selectedVisa.path === "/resume-marketing/sweden" ? (
+              <Sweden /> 
             ) : (
               <div className="text-gray-700 text-lg leading-relaxed">
                 Information about <strong>{selectedVisa.name}</strong> will be displayed here.

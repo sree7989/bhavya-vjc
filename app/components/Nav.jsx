@@ -376,6 +376,8 @@ const [mobileSubSubMenu, setMobileSubSubMenu] = useState({});
     { name: "Malaysia", path: "/resume-marketing/malaysia" },
     { name: "Poland", path: "/resume-marketing/poland" },
     { name: "Malta", path: "/resume-marketing/malta" },
+    { name: "Spain", path: "/resume-marketing/spain" },
+    { name: "Sweden", path: "/resume-marketing/sweden" },
   ];
    const toursticketingSubPages = [
     { name: "Europe", path: "/tours-ticketing/europe" },

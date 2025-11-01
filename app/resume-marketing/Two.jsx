@@ -86,6 +86,16 @@ const cards = [
     image: "/maltaresume.jpg",
     path: "/resume-marketing/malta",
   },
+  {
+    name: "Spain Resume Marketing",
+    image: "/spainresume.jpg",
+    path: "/resume-marketing/spain",
+  },
+  {
+    name: "Sweden Resume Marketing",
+    image: "/swedenresume.jpg",
+    path: "/resume-marketing/sweden",
+  },
 ];
 
 const BookFlipAnimation = () => {
